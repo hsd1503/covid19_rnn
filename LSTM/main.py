@@ -13,7 +13,6 @@ def load_pkl(path):
         return obj
 
 
-# 训练函数 创建TLSTM实例，得到TLSTM训练后的准确度，使用adam优化器学习
 def training(path,fold,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,model_path,learning_rate=[1e-5, 2e-2],lr_decay=2000,):
     # train data
     path_string = path + '/TrainData.seqs'
@@ -152,10 +151,10 @@ def training(path,fold,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,
 
 
 def testing(path, hidden_dim, fc_dim, key, model_path):
-    path_string = path + '/batches_data_test.seqs'
+    path_string = path + '/TestData.seqs'
     data_test_batches = load_pkl(path_string)
 
-    path_string = path + '/batches_label_test.seqs'
+    path_string = path + '/TestLabel.seqs'
     labels_test_batches = load_pkl(path_string)
 
     number_test_batches = len(data_test_batches)
@@ -301,16 +300,16 @@ def testing_Uncertainty(path,test_dropout_prob,hidden_dim,fc_dim,key,model_path,
 def main(training_mode,fold,data_path, learning_rate,lr_decay, training_epochs,dropout_prob,hidden_dim,fc_dim,model_path,model_num=0):
     """
 
-    :param training_mode:  1训练，0测试，2不确定估计
+    :param training_mode:  1train，0test，2uncertainty
     :param fold: 5-fold
-    :param data_path: 数据文件夹
-    :param learning_rate: 学习率
-    :param training_epochs: 训练epoch数
-    :param dropout_prob: dropout，1全保留
-    :param hidden_dim: LSTM内数据唯独
-    :param fc_dim: fc层维度
-    :param model_path: 模型保存/加载文件夹
-    :param model_num: uncertainty时模型个数
+    :param data_path:
+    :param learning_rate:
+    :param training_epochs:
+    :param dropout_prob: dropout，1 keep all
+    :param hidden_dim:
+    :param fc_dim:
+    :param model_path: save/load model path
+    :param model_num: number of models when uncertainty
     """
     training_mode = int(training_mode)
     path = str(data_path)
