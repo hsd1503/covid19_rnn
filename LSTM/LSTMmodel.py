@@ -41,7 +41,7 @@ class LSTM(object):
             self.Uc = self.init_weights(self.hidden_dim, self.hidden_dim, name='Cell_State_weight',reg=None)
             self.bc = self.init_bias(self.hidden_dim, name='Cell_Hidden_bias')
 
-            # 对ct-1分解的参数，论文中对ct-1的处理
+            # ct-1 decomp
             self.W_decomp = self.init_weights(self.hidden_dim, self.hidden_dim, name='Decomposition_Hidden_weight',reg=None)
             self.b_decomp = self.init_bias(self.hidden_dim, name='Decomposition_Hidden_bias_enc')
 
@@ -102,7 +102,7 @@ class LSTM(object):
         # Current Hidden state ht
         current_hidden_state = o * tf.nn.tanh(Ct)
 
-        # 本cell的c和h，堆叠成一个数组输出
+        # c+h
         return tf.stack([current_hidden_state, Ct])
 
     # Returns all hidden states for the samples in a batch
@@ -115,7 +115,7 @@ class LSTM(object):
         ini_state_cell = tf.stack([initial_hidden, initial_hidden])
 
         packed_hidden_states = tf.scan(self.LSTM_Unit, scan_input, initializer=ini_state_cell, name='states')
-        # 只取第二维的第一个数，也就是h
+        # h
         all_states = packed_hidden_states[:, 0, :, :]
         return all_states
 
