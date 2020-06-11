@@ -14,7 +14,7 @@ def load_pkl(path):
 
 
 # 训练函数 创建TLSTM实例，得到TLSTM训练后的准确度，使用adam优化器学习
-def training(path,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,model_path,learning_rate=[1e-5, 2e-2],lr_decay=2000):
+def training(path,fold,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,model_path,learning_rate=[1e-5, 2e-2],lr_decay=2000,):
     # train data
     path_string = path + '/TrainData.seqs'
     data_train_batches = load_pkl(path_string)
@@ -54,8 +54,10 @@ def training(path,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,model
     # train
     with tf.Session() as sess:
         sess.run(init)
+        valid_acc = []
+        valid_auc = []
+        valid_loss=[]
         for epoch in range(training_epochs):
-
             # Loop over all batches
             for i in range(number_train_batches):
                 # batch_xs is [number of patients x sequence length x input dimensionality]
@@ -65,18 +67,21 @@ def training(path,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,model
                 print('Training epoch ' + str(epoch) + ' batch ' + str(i) + ' done')
 
             # valid
-            loss=[]
+            loss = []
             Y_pred = []
             Y_true = []
             Labels = []
             Logits = []
-            for i in range(number_test_batches):  #
-                batch_xs, batch_ys = data_test_batches[i], labels_test_batches[i]
+            for k in range(number_train_batches):  #
+                if (len(data_train_batches[k])<fold): continue
+                batch_xs, batch_ys = [data_train_batches[k][-fold]], [labels_train_batches[k][-fold]]
                 c_train, y_pred_train, y_train, logits_train, labels_train = sess.run(lstm.get_cost_acc(), \
-                                   feed_dict={lstm.input:batch_xs, lstm.labels: batch_ys,lstm.keep_prob: train_dropout_prob})
-
+                                                                                      feed_dict={
+                                                                                          lstm.input: batch_xs,
+                                                                                          lstm.labels: batch_ys,
+                                                                                          lstm.keep_prob: train_dropout_prob})
                 loss.append(c_train)
-                if i > 0:
+                if k > 0:
                     Y_true = np.concatenate([Y_true, y_train], 0)
                     Y_pred = np.concatenate([Y_pred, y_pred_train], 0)
                     Labels = np.concatenate([Labels, labels_train], 0)
@@ -87,23 +92,63 @@ def training(path,training_epochs,train_dropout_prob,hidden_dim,fc_dim,key,model
                     Labels = labels_train
                     Logits = logits_train
 
-
             total_acc = accuracy_score(Y_true, Y_pred)
             total_auc = roc_auc_score(Labels, Logits, average='micro')
             total_auc_macro = roc_auc_score(Labels, Logits, average='macro')
-            print("Test Accuracy = {:.3f}".format(total_acc))
-            print("Test AUC = {:.3f}".format(total_auc))
-            print("Test AUC Macro = {:.3f}".format(total_auc_macro))
-            print('Testing epoch ' + str(epoch) + ' done........................')
+            mean_loss=np.mean(loss)
+            print("validation Accuracy = {:.3f}".format(total_acc))
+            print("validation AUC = {:.3f}".format(total_auc))
+            print("validation AUC Macro = {:.3f}".format(total_auc_macro))
+            print("validation Loss = {:.3f}".format(mean_loss))
+            print('epoch ' + str(epoch) + ' done........................')
 
-            if(np.mean(loss)<=best_valid_loss):
-                print ("[*] Best validation loss so far! ")
-                saver.save(sess, model_path)
-                print ("[*] Model saved at", model_path, flush=True)
+            valid_acc.append(total_acc)
+            valid_auc.append(total_auc)
+            valid_loss.append(mean_loss)
 
-        print("Training is over!")
-        saver.save(sess, model_path)
-        print("[*] Model saved at", model_path, flush=True)
+            if(mean_loss<=best_valid_loss):
+                print ("[*] Best loss so far! ")
+                saver.save(sess, model_path+'model'+str(fold)+'/')
+                print ("[*] Model saved at", model_path+'model'+str(fold)+'/', flush=True)
+
+        pickle.dump(valid_acc, open('../results/valid_acc'+str(fold)+'.seqs', 'wb'), -1)
+        pickle.dump(valid_auc, open('../results/valid_auc'+str(fold)+'.seqs', 'wb'), -1)
+        pickle.dump(valid_loss, open('../results/valid_loss' + str(fold) + '.seqs', 'wb'), -1)
+
+        print("Fold "+str(fold)+" training is over!")
+        saver.save(sess, model_path+'model'+str(fold)+'/')
+        print("[******] Model saved at", model_path+'model'+str(fold)+'/', flush=True)
+
+        # test
+        loss = []
+        Y_pred = []
+        Y_true = []
+        Labels = []
+        Logits = []
+        for i in range(number_test_batches):  #
+            batch_xs, batch_ys = data_test_batches[i], labels_test_batches[i]
+            c_train, y_pred_train, y_train, logits_train, labels_train = sess.run(lstm.get_cost_acc(), \
+                                                                                  feed_dict={lstm.input: batch_xs,
+                                                                                             lstm.labels: batch_ys,
+                                                                                             lstm.keep_prob: train_dropout_prob})
+            loss.append(c_train)
+            if i > 0:
+                Y_true = np.concatenate([Y_true, y_train], 0)
+                Y_pred = np.concatenate([Y_pred, y_pred_train], 0)
+                Labels = np.concatenate([Labels, labels_train], 0)
+                Logits = np.concatenate([Logits, logits_train], 0)
+            else:
+                Y_true = y_train
+                Y_pred = y_pred_train
+                Labels = labels_train
+                Logits = logits_train
+        total_acc = accuracy_score(Y_true, Y_pred)
+        total_auc = roc_auc_score(Labels, Logits, average='micro')
+        total_auc_macro = roc_auc_score(Labels, Logits, average='macro')
+        print("Test Accuracy = {:.3f}".format(total_acc))
+        print("Test AUC = {:.3f}".format(total_auc))
+        print("Test AUC Macro = {:.3f}".format(total_auc_macro))
+
 
 
 def testing(path, hidden_dim, fc_dim, key, model_path):
@@ -253,10 +298,11 @@ def testing_Uncertainty(path,test_dropout_prob,hidden_dim,fc_dim,key,model_path,
 #         testing(path, hidden_dim, fc_dim, training_mode, model_path)
 
 
-def main(training_mode,data_path, learning_rate,lr_decay, training_epochs,dropout_prob,hidden_dim,fc_dim,model_path,model_num=0):
+def main(training_mode,fold,data_path, learning_rate,lr_decay, training_epochs,dropout_prob,hidden_dim,fc_dim,model_path,model_num=0):
     """
 
     :param training_mode:  1训练，0测试，2不确定估计
+    :param fold: 5-fold
     :param data_path: 数据文件夹
     :param learning_rate: 学习率
     :param training_epochs: 训练epoch数
@@ -278,7 +324,7 @@ def main(training_mode,data_path, learning_rate,lr_decay, training_epochs,dropou
         hidden_dim = int(hidden_dim)
         fc_dim = int(fc_dim)
         model_path = str(model_path)
-        training(path, training_epochs, dropout_prob, hidden_dim, fc_dim, training_mode, model_path,learning_rate, lr_decay)
+        training(path, fold,training_epochs, dropout_prob, hidden_dim, fc_dim, training_mode, model_path,learning_rate, lr_decay)
 
     # test
     elif training_mode==0:
@@ -301,6 +347,6 @@ def main(training_mode,data_path, learning_rate,lr_decay, training_epochs,dropou
 
 if __name__ == "__main__":
 
-   main(training_mode=1,data_path='../BatchData', learning_rate=[1e-5, 2e-2],lr_decay=2000, training_epochs=15,dropout_prob=0.25,hidden_dim=64,fc_dim=32,model_path='../model/',model_num=5)
+   main(training_mode=1,fold=1,data_path='../BatchData', learning_rate=[1e-5, 2e-2],lr_decay=2000, training_epochs=15,dropout_prob=0.25,hidden_dim=64,fc_dim=32,model_path='../model/',model_num=5)
 
 
