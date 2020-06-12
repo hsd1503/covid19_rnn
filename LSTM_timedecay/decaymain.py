@@ -146,6 +146,18 @@ def testing(path,hidden_dim,fc_dim,key,model_path):
         print("Test AUC Micro = {:.3f}".format(total_auc))
         print("Test AUC Macro = {:.3f}".format(total_auc_macro))
 
+        states=[]
+        for i in range(number_test_batches):
+            batch_xs, batch_ys, batch_ts = data_test_batches[i], labels_test_batches[i], \
+                                                     elapsed_test_batches[i]
+            state = sess.run(lstm_load.get_states(),feed_dict={lstm_load.input: batch_xs,
+                                                                                        lstm_load.labels: batch_ys,\
+                                                                                        lstm_load.time: batch_ts,\
+                                                                                        lstm_load.keep_prob: test_dropout_prob})
+            states.append(state)
+        pickle.dump(states, open('../emb/states.seqs', 'wb'), -1)
+        print("[*] States saved at emb/states.seqs")
+
 
 
 def main(training_mode,data_path, learning_rate, training_epochs,dropout_prob,hidden_dim,fc_dim,model_path):
