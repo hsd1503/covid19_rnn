@@ -224,7 +224,6 @@ def testing_Uncertainty(path,test_dropout_prob,hidden_dim,fc_dim,key,model_path,
         acc_in_time_length=[]
         auc_in_time_length=[]
         uncertainty_in_time_length=[]
-        # 暂且测试第一个batch 个数256 序列长度44
         batch_xs, batch_ys = data_test_batches[0], labels_test_batches[0]
         time_length = len(batch_xs[0])
 
