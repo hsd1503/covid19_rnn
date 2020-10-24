@@ -153,7 +153,7 @@ def testing(path,hidden_dim,fc_dim,key,model_path):
         fpr, tpr, threshold = metrics.roc_curve(Y_true, Y_pred)
 
         plt.title('Test AUC-ROC')
-        plt.plot(fpr, tpr, label='Val AUC = %0.3f' % total_auc)
+        plt.plot(fpr, tpr, c='r',label='Val AUC = %0.3f' % total_auc)
         plt.legend(loc='lower right')
         plt.xlim([0, 1])
         plt.ylim([0, 1])
