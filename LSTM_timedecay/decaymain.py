@@ -3,8 +3,10 @@ import pickle
 import numpy as np
 import math
 import tensorflow as tf
+from sklearn import metrics
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
+import matplotlib.pyplot as plt
 
 from LSTMtimedecay import LSTM
 
@@ -88,9 +90,11 @@ def training(path,learning_rate,training_epochs,train_dropout_prob,hidden_dim,fc
         total_acc = accuracy_score(Y_true, Y_pred)
         total_auc = roc_auc_score(Labels, Logits, average='micro')
         total_auc_macro = roc_auc_score(Labels, Logits, average='macro')
+
         print("Train Accuracy = {:.3f}".format(total_acc))
         print("Train AUC = {:.3f}".format(total_auc))
         print("Train AUC Macro = {:.3f}".format(total_auc_macro))
+
 
 
 def testing(path,hidden_dim,fc_dim,key,model_path):
@@ -146,6 +150,17 @@ def testing(path,hidden_dim,fc_dim,key,model_path):
         print("Test AUC Micro = {:.3f}".format(total_auc))
         print("Test AUC Macro = {:.3f}".format(total_auc_macro))
 
+        fpr, tpr, threshold = metrics.roc_curve(Y_true, Y_pred)
+
+        plt.title('Test AUC-ROC')
+        plt.plot(fpr, tpr, label='Val AUC = %0.3f' % total_auc)
+        plt.legend(loc='lower right')
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        plt.ylabel('True Positive Rate')
+        plt.xlabel('False Positive Rate')
+        plt.savefig('testROC.jpg', dpi=300)
+
         states=[]
         for i in range(number_test_batches):
             batch_xs, batch_ys, batch_ts = data_test_batches[i], labels_test_batches[i], \
@@ -181,6 +196,8 @@ def main(training_mode,data_path, learning_rate, training_epochs,dropout_prob,hi
         fc_dim = int(fc_dim)
         model_path = str(model_path)
         testing(path, hidden_dim, fc_dim, training_mode, model_path)
+
+
 
 
 if __name__ == "__main__":
